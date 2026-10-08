@@ -1,5 +1,6 @@
 import { Junction } from "@/models/Junction";
 import { transitionToPhase } from "./signalService";
+import { createAuditLog } from "./auditService";
 
 type Direction = "NORTH" | "SOUTH" | "EAST" | "WEST";
 
@@ -16,39 +17,55 @@ export async function handleManualCommand(
   command: string,
   direction?: Direction,
 ) {
-  console.log("========== MANUAL SERVICE ==========");
-  console.log("JUNCTION:", junctionId);
-  console.log("COMMAND RECEIVED:", command);
-  console.log("DIRECTION:", direction);
-
   const normalizedCommand = command.trim().toUpperCase().replace(/\s+/g, "_");
-
-  console.log("NORMALIZED COMMAND:", normalizedCommand);
 
   const junction = await Junction.findOne({
     junctionId,
   });
 
   if (!junction) {
-    console.log("JUNCTION NOT FOUND");
     throw new Error("JUNCTION_NOT_FOUND");
   }
-
-  console.log("CURRENT MODE:", junction.mode);
-  console.log("CURRENT PHASE:", junction.phase);
 
   // =========================
   // RETURN TO AUTOMATIC
   // =========================
 
   if (normalizedCommand === "RETURN_TO_AUTOMATIC") {
-    console.log(">>> RETURNING TO AUTOMATIC");
+    // Controller must be online before
+    // returning to automatic mode.
+
+    if (junction.controllerStatus !== "ONLINE") {
+      throw new Error("CONTROLLER_OFFLINE");
+    }
+
+    // Physical controller state must
+    // match the desired state before
+    // recovery is allowed.
+
+    const signalsMatch =
+      junction.actualSignals.NORTH === junction.desiredSignals.NORTH &&
+      junction.actualSignals.SOUTH === junction.desiredSignals.SOUTH &&
+      junction.actualSignals.EAST === junction.desiredSignals.EAST &&
+      junction.actualSignals.WEST === junction.desiredSignals.WEST;
+
+    if (!signalsMatch) {
+      throw new Error("CONTROLLER_STATE_NOT_RECONCILED");
+    }
 
     junction.mode = "AUTOMATIC";
 
     await junction.save();
 
-    console.log("NEW MODE:", junction.mode);
+    await createAuditLog(
+      junctionId,
+      "MODE_CHANGE",
+      "Junction returned to automatic mode after controller recovery",
+      {
+        mode: "AUTOMATIC",
+        controllerStatus: junction.controllerStatus,
+      },
+    );
 
     return junction;
   }
@@ -62,11 +79,17 @@ export async function handleManualCommand(
       throw new Error("DIRECTION_REQUIRED");
     }
 
-    console.log(">>> MANUAL GREEN REQUEST");
+    // Manual control is blocked during
+    // failure or emergency mode.
+
+    if (junction.mode === "FAILURE" || junction.mode === "EMERGENCY") {
+      throw new Error("MANUAL_COMMAND_NOT_ALLOWED_IN_CURRENT_MODE");
+    }
 
     const phase = getPhaseForDirection(direction);
 
-    console.log("TARGET PHASE:", phase);
+    // All signal changes must go through
+    // the safe transition logic.
 
     const updatedJunction = await transitionToPhase(junction, phase);
 
@@ -74,14 +97,19 @@ export async function handleManualCommand(
 
     await updatedJunction.save();
 
-    console.log("FINAL MODE:", updatedJunction.mode);
-
-    console.log("FINAL PHASE:", updatedJunction.phase);
+    await createAuditLog(
+      junctionId,
+      "MANUAL_COMMAND",
+      `Manual green requested for ${direction}`,
+      {
+        command: normalizedCommand,
+        direction,
+        phase,
+      },
+    );
 
     return updatedJunction;
   }
-
-  console.log(">>> INVALID COMMAND");
 
   throw new Error("INVALID_COMMAND");
 }

@@ -11,6 +11,10 @@ export async function POST(
 
     const body = await request.json();
 
+    // =========================
+    // VALIDATION
+    // =========================
+
     if (!body.command) {
       return NextResponse.json(
         {
@@ -21,6 +25,10 @@ export async function POST(
     }
 
     await connectDB();
+
+    // =========================
+    // HANDLE COMMAND
+    // =========================
 
     const junction = await handleManualCommand(
       id,
@@ -39,6 +47,10 @@ export async function POST(
     console.error("COMMAND ERROR:", error);
 
     if (error instanceof Error) {
+      // =========================
+      // JUNCTION NOT FOUND
+      // =========================
+
       if (error.message === "JUNCTION_NOT_FOUND") {
         return NextResponse.json(
           {
@@ -47,6 +59,10 @@ export async function POST(
           { status: 404 },
         );
       }
+
+      // =========================
+      // DIRECTION REQUIRED
+      // =========================
 
       if (error.message === "DIRECTION_REQUIRED") {
         return NextResponse.json(
@@ -57,6 +73,10 @@ export async function POST(
         );
       }
 
+      // =========================
+      // INVALID COMMAND
+      // =========================
+
       if (error.message === "INVALID_COMMAND") {
         return NextResponse.json(
           {
@@ -65,7 +85,52 @@ export async function POST(
           { status: 400 },
         );
       }
+
+      // =========================
+      // CONTROLLER OFFLINE
+      // =========================
+
+      if (error.message === "CONTROLLER_OFFLINE") {
+        return NextResponse.json(
+          {
+            message: "Controller is offline. Recovery cannot proceed.",
+          },
+          { status: 409 },
+        );
+      }
+
+      // =========================
+      // CONTROLLER STATE NOT RECONCILED
+      // =========================
+
+      if (error.message === "CONTROLLER_STATE_NOT_RECONCILED") {
+        return NextResponse.json(
+          {
+            message:
+              "Controller state has not been reconciled with desired state.",
+          },
+          { status: 409 },
+        );
+      }
+
+      // =========================
+      // MANUAL COMMAND NOT ALLOWED
+      // =========================
+
+      if (error.message === "MANUAL_COMMAND_NOT_ALLOWED_IN_CURRENT_MODE") {
+        return NextResponse.json(
+          {
+            message:
+              "Manual command is not allowed while the junction is in FAILURE or EMERGENCY mode.",
+          },
+          { status: 409 },
+        );
+      }
     }
+
+    // =========================
+    // GENERIC ERROR
+    // =========================
 
     return NextResponse.json(
       {

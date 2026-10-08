@@ -11,19 +11,21 @@ export async function runAutomaticControl(junctionId: string) {
     throw new Error("JUNCTION_NOT_FOUND");
   }
 
-  // Automatic mode ছাড়া automatic scheduler চলবে না
+  // Automatic scheduling only runs
+  // when the junction is in automatic mode.
+
   if (junction.mode !== "AUTOMATIC") {
     return junction;
   }
 
-  const nextPhase = selectNextPhase(junction);
+  const nextPhase = await selectNextPhase(junction);
 
-  // Already correct phase
+  // No transition is needed when
+  // the current phase is already optimal.
+
   if (nextPhase === junction.phase) {
     return junction;
   }
 
-  const updatedJunction = await transitionToPhase(junction, nextPhase);
-
-  return updatedJunction;
+  return await transitionToPhase(junction, nextPhase);
 }

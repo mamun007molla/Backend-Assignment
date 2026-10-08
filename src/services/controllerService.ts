@@ -11,6 +11,21 @@ export async function createControllerCommand(junctionId: string) {
     throw new Error("JUNCTION_NOT_FOUND");
   }
 
+  // Only the latest pending command
+  // should remain active for a junction.
+
+  await ControllerCommand.updateMany(
+    {
+      junction_id: junctionId,
+      status: "PENDING",
+    },
+    {
+      $set: {
+        status: "SUPERSEDED",
+      },
+    },
+  );
+
   const command = await ControllerCommand.create({
     command_id: randomUUID(),
 
@@ -25,8 +40,6 @@ export async function createControllerCommand(junctionId: string) {
 
     status: "PENDING",
   });
-
-  console.log("CONTROLLER COMMAND CREATED:", command.command_id);
 
   return command;
 }

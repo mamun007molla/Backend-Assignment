@@ -9,6 +9,7 @@ export async function POST(request: Request) {
     // Basic validation
     if (
       !body.event_id ||
+      !body.vehicle_id ||
       !body.junction_id ||
       !body.direction ||
       !body.event_type ||
@@ -61,6 +62,23 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             message: "Queue cannot become negative",
+          },
+          { status: 409 },
+        );
+      }
+      if (error.message === "VEHICLE_NOT_FOUND") {
+        return NextResponse.json(
+          {
+            message: "Vehicle arrival event not found",
+          },
+          { status: 409 },
+        );
+      }
+
+      if (error.message === "VEHICLE_ALREADY_CLEARED") {
+        return NextResponse.json(
+          {
+            message: "Vehicle has already been cleared",
           },
           { status: 409 },
         );

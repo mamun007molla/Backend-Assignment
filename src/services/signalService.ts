@@ -10,10 +10,14 @@ const PHASE_DIRECTIONS: Record<Phase, Direction[]> = {
   EAST_WEST: ["EAST", "WEST"],
 };
 
+const ALL_DIRECTIONS: Direction[] = ["NORTH", "SOUTH", "EAST", "WEST"];
+
 export async function transitionToPhase(junction: IJunction, nextPhase: Phase) {
   const currentPhase = junction.phase as Phase;
 
-  // Same phase হলেও controller-কে desired state পাঠাতে হবে
+  // Even when the phase does not change,
+  // send the desired state to the controller.
+
   if (currentPhase === nextPhase) {
     await createControllerCommand(junction.junctionId);
 
@@ -24,35 +28,42 @@ export async function transitionToPhase(junction: IJunction, nextPhase: Phase) {
 
   const nextDirections = PHASE_DIRECTIONS[nextPhase];
 
-  // 1. GREEN → YELLOW
+  // Safety transition:
+  // GREEN → YELLOW
+
   for (const direction of currentDirections) {
     junction.desiredSignals[direction] = "YELLOW";
   }
 
   await junction.save();
 
-  // 2. ALL RED
-  const allDirections: Direction[] = ["NORTH", "SOUTH", "EAST", "WEST"];
+  // Safety transition:
+  // YELLOW → ALL_RED
 
-  for (const direction of allDirections) {
+  for (const direction of ALL_DIRECTIONS) {
     junction.desiredSignals[direction] = "RED";
   }
 
   await junction.save();
 
-  // 3. Update phase
+  // Update the logical phase only
+  // after all signals are RED.
+
   junction.phase = nextPhase;
 
   await junction.save();
 
-  // 4. New phase → GREEN
+  // Activate the new phase.
+
   for (const direction of nextDirections) {
     junction.desiredSignals[direction] = "GREEN";
   }
 
   await junction.save();
 
-  // 5. Send command to controller
+  // Send the final desired state
+  // to the physical controller.
+
   await createControllerCommand(junction.junctionId);
 
   return junction;

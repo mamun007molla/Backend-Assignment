@@ -1,18 +1,25 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
+
+type SignalState = "RED" | "YELLOW" | "GREEN";
+
+type ControllerCommandStatus =
+  | "PENDING"
+  | "ACKNOWLEDGED"
+  | "FAILED"
+  | "SUPERSEDED";
+
+type DesiredSignals = {
+  NORTH: SignalState;
+  SOUTH: SignalState;
+  EAST: SignalState;
+  WEST: SignalState;
+};
 
 export interface IControllerCommand extends Document {
   command_id: string;
   junction_id: string;
-
-  desiredSignals: {
-    NORTH: string;
-    SOUTH: string;
-    EAST: string;
-    WEST: string;
-  };
-
-  status: "PENDING" | "ACKNOWLEDGED" | "FAILED";
-
+  desiredSignals: DesiredSignals;
+  status: ControllerCommandStatus;
   createdAt: Date;
   acknowledgedAt?: Date;
   errorMessage?: string;
@@ -35,24 +42,31 @@ const controllerCommandSchema = new Schema<IControllerCommand>(
       NORTH: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
+
       SOUTH: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
+
       EAST: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
+
       WEST: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
     },
 
     status: {
       type: String,
-      enum: ["PENDING", "ACKNOWLEDGED", "FAILED"],
+      enum: ["PENDING", "ACKNOWLEDGED", "FAILED", "SUPERSEDED"],
       default: "PENDING",
     },
 

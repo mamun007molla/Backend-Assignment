@@ -1,32 +1,40 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
+
+type JunctionMode =
+  | "AUTOMATIC"
+  | "MANUAL"
+  | "EMERGENCY"
+  | "DEGRADED"
+  | "FAILURE";
+
+type JunctionPhase = "NORTH_SOUTH" | "EAST_WEST";
+
+type SignalState = "RED" | "YELLOW" | "GREEN";
+
+type ControllerStatus = "ONLINE" | "OFFLINE";
+
+type DirectionQueues = {
+  NORTH: number;
+  SOUTH: number;
+  EAST: number;
+  WEST: number;
+};
+
+type SignalStates = {
+  NORTH: SignalState;
+  SOUTH: SignalState;
+  EAST: SignalState;
+  WEST: SignalState;
+};
 
 export interface IJunction extends Document {
   junctionId: string;
-  mode: string;
-  phase: string;
-
-  queues: {
-    NORTH: number;
-    SOUTH: number;
-    EAST: number;
-    WEST: number;
-  };
-
-  desiredSignals: {
-    NORTH: string;
-    SOUTH: string;
-    EAST: string;
-    WEST: string;
-  };
-
-  actualSignals: {
-    NORTH: string;
-    SOUTH: string;
-    EAST: string;
-    WEST: string;
-  };
-
-  controllerStatus: string;
+  mode: JunctionMode;
+  phase: JunctionPhase;
+  queues: DirectionQueues;
+  desiredSignals: SignalStates;
+  actualSignals: SignalStates;
+  controllerStatus: ControllerStatus;
 }
 
 const junctionSchema = new Schema<IJunction>(
@@ -40,11 +48,13 @@ const junctionSchema = new Schema<IJunction>(
     mode: {
       type: String,
       required: true,
+      enum: ["AUTOMATIC", "MANUAL", "EMERGENCY", "DEGRADED", "FAILURE"],
     },
 
     phase: {
       type: String,
       required: true,
+      enum: ["NORTH_SOUTH", "EAST_WEST"],
     },
 
     queues: {
@@ -77,21 +87,25 @@ const junctionSchema = new Schema<IJunction>(
       NORTH: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
 
       SOUTH: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
 
       EAST: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
 
       WEST: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
     },
 
@@ -99,27 +113,32 @@ const junctionSchema = new Schema<IJunction>(
       NORTH: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
 
       SOUTH: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
 
       EAST: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
 
       WEST: {
         type: String,
         required: true,
+        enum: ["RED", "YELLOW", "GREEN"],
       },
     },
 
     controllerStatus: {
       type: String,
       required: true,
+      enum: ["ONLINE", "OFFLINE"],
     },
   },
   {

@@ -1,5 +1,6 @@
 import { Junction } from "@/models/Junction";
 import { transitionToPhase } from "./signalService";
+import { createAuditLog } from "./auditService";
 
 type Direction = "NORTH" | "SOUTH" | "EAST" | "WEST";
 
@@ -23,15 +24,30 @@ export async function handleEmergency(
     throw new Error("JUNCTION_NOT_FOUND");
   }
 
-  // Enter emergency mode
+  // Emergency mode prevents normal
+  // automatic/manual control from
+  // overriding the emergency state.
+
   junction.mode = "EMERGENCY";
 
   await junction.save();
 
   const emergencyPhase = getPhaseForDirection(direction);
 
-  // Safe transition
+  // Emergency requests must use the
+  // same safe phase transition logic.
+
   const updatedJunction = await transitionToPhase(junction, emergencyPhase);
+
+  await createAuditLog(
+    junctionId,
+    "EMERGENCY",
+    `Emergency vehicle detected from ${direction}`,
+    {
+      direction,
+      phase: emergencyPhase,
+    },
+  );
 
   return updatedJunction;
 }
